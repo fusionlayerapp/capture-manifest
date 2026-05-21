@@ -12,8 +12,20 @@ Spun out of [UACP](https://github.com/hn2/uacp) per ADR 0038. Sibling protocols:
 ## Validate a manifest
 
 ```bash
-node tools/validate/index.js path/to/manifest.json
+# one-off (no install)
+npx capture-manifest-validate path/to/manifest.json
+
+# or install globally
+npm install -g capture-manifest-validate
+capture-manifest-validate my-manifest.json
+
+# programmatic
+const { validateManifest } = require('capture-manifest-validate')
+const result = validateManifest(JSON.parse(fs.readFileSync('my-manifest.json', 'utf8')))
+if (!result.valid) console.error(result.errors)
 ```
+
+Exit code 0 = valid. Exit code 1 = validation errors. Exit code 2 = cannot read file.
 
 ## Run tests
 
