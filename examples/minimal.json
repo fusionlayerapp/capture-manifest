@@ -1,0 +1,19 @@
+{
+  "manifest_version": "0.1",
+  "id": "mfst-00000000-0000-0000-0000-000000000001",
+  "artifact_id": "art-00000000-0000-0000-0000-000000000001",
+  "artifact_hash": "sha256:19a5b2e0dc16158a300b803721273460d9970dfabe58c2066a7613070b07a4fc",
+  "source": {
+    "vendor": "continue",
+    "kind": "ide"
+  },
+  "agent": {
+    "name": "fusionlayer-daemon",
+    "version": "1.0.0"
+  },
+  "captured_at": "2026-05-21T10:00:01Z",
+  "consent": {
+    "basis": "explicit_consent"
+  },
+  "manifest_signature": "sha256:b045885e4cb9b3adedc07c42f2db51e63a7a3a50352435801c0ec26893cb6450"
+}
