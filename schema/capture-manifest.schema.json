@@ -1,0 +1,231 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/hn2/capture-manifest/spec/v0.1/capture-manifest.schema.json",
+  "title": "Capture-Manifest v0.1",
+  "description": "JSON Schema for Capture-Manifest v0.1 — provenance record for AI-captured material.",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "id",
+    "artifact_id",
+    "artifact_hash",
+    "source",
+    "agent",
+    "captured_at",
+    "consent",
+    "manifest_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "const": "0.1",
+      "description": "Capture-Manifest spec version. Must be '0.1' for this spec version."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Unique identifier for this manifest. UUID v4 recommended."
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "The UACP artifact id this manifest describes."
+    },
+    "artifact_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 hash of the canonical JSON of the referenced UACP artifact. Format: sha256:<hex>."
+    },
+    "source": {
+      "type": "object",
+      "required": ["vendor", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "AI tool vendor slug (e.g., cursor, claude-code, continue, jetbrains)."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["ide", "chat", "api", "mobile", "cli", "browser"],
+          "description": "Source kind."
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "description": "URL or URI of the source document, if applicable."
+        },
+        "document_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Opaque document or session identifier in the vendor's system."
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Conversation or session identifier."
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Agent name (e.g., fusionlayer-daemon, fusionlayer-vscode)."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "description": "Semver version of the capturing agent."
+        },
+        "platform": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "OS/platform string (e.g., darwin, win32, linux)."
+        },
+        "key_id": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Public key identifier for verifying the manifest signature."
+        }
+      }
+    },
+    "captured_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+      "description": "ISO 8601 UTC timestamp when capture occurred."
+    },
+    "consent": {
+      "type": "object",
+      "required": ["basis"],
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "type": "string",
+          "enum": [
+            "explicit_consent",
+            "legitimate_interest",
+            "contract",
+            "legal_obligation",
+            "vital_interests",
+            "public_task"
+          ],
+          "description": "Lawful basis for processing. Maps to GDPR Article 6(1)(a)-(f)."
+        },
+        "gdpr_article": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "GDPR Article 6 sub-clause (e.g., '6(1)(a)', '6(1)(f)'). Informational."
+        },
+        "ccpa_category": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "CCPA personal information category. Informational."
+        },
+        "notice_url": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "URL to the full privacy notice shown at collection time."
+        },
+        "user_id": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Opaque identifier of the user who provided consent. Must not be PII."
+        },
+        "consented_at": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+          "description": "ISO 8601 UTC timestamp when consent was given."
+        }
+      }
+    },
+    "manifest_signature": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 hash of this manifest's canonical JSON (signature field removed). Format: sha256:<hex>."
+    },
+    "redactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pattern_id", "count"],
+        "additionalProperties": false,
+        "properties": {
+          "pattern_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Identifier of the redaction pattern that matched (e.g., pii:email, secret:api-key)."
+          },
+          "pattern_label": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "Human-readable label (e.g., 'Email address', 'API key')."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of spans removed."
+          },
+          "placeholder": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Replacement text used (e.g., '[REDACTED]', '[EMAIL]')."
+          }
+        }
+      },
+      "description": "Applied redactions. Absent or empty = no redactions applied."
+    },
+    "prev_manifest_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Id of the previous manifest in the hash chain."
+    },
+    "retention_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "delete_after_days": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Days after captured_at before the artifact should be deleted."
+        },
+        "delete_reason": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Human-readable reason for deletion."
+        },
+        "scheduled_delete_at": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+          "description": "ISO 8601 UTC timestamp of scheduled deletion."
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "maxItems": 32,
+      "uniqueItems": true,
+      "description": "Free-form labels."
+    }
+  }
+}

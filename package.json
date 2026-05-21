@@ -1,0 +1,11 @@
+{
+  "name": "capture-manifest",
+  "version": "0.1.0",
+  "description": "Capture-Manifest — AI capture provenance protocol",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tools/validate/__tests__/validate.test.js",
+    "validate": "node tools/validate/index.js"
+  },
+  "license": "Apache-2.0"
+}
