@@ -122,3 +122,39 @@ test('all consent basis values accepted', () => {
     assert.doesNotThrow(() => validateManifest(m), `basis ${basis} should be valid`)
   }
 })
+
+test('redaction_level none accepted', () => {
+  const m = makeValid()
+  m.redaction_level = 'none'
+  const clone = JSON.parse(JSON.stringify(m))
+  delete clone.manifest_signature
+  m.manifest_signature = 'sha256:' + sha256Hex(canonicalJson(clone))
+  assert.doesNotThrow(() => validateManifest(m))
+})
+
+test('redaction_level balanced accepted', () => {
+  const m = makeValid()
+  m.redaction_level = 'balanced'
+  const clone = JSON.parse(JSON.stringify(m))
+  delete clone.manifest_signature
+  m.manifest_signature = 'sha256:' + sha256Hex(canonicalJson(clone))
+  assert.doesNotThrow(() => validateManifest(m))
+})
+
+test('redaction_level strict accepted', () => {
+  const m = makeValid()
+  m.redaction_level = 'strict'
+  const clone = JSON.parse(JSON.stringify(m))
+  delete clone.manifest_signature
+  m.manifest_signature = 'sha256:' + sha256Hex(canonicalJson(clone))
+  assert.doesNotThrow(() => validateManifest(m))
+})
+
+test('redaction_level invalid value rejected', () => {
+  const m = makeValid()
+  m.redaction_level = 'aggressive'
+  const clone = JSON.parse(JSON.stringify(m))
+  delete clone.manifest_signature
+  m.manifest_signature = 'sha256:' + sha256Hex(canonicalJson(clone))
+  assert.throws(() => validateManifest(m))
+})

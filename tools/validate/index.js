@@ -10,6 +10,7 @@ const ISO_Z_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/
 const SOURCE_KINDS = new Set(['ide', 'chat', 'api', 'mobile', 'cli', 'browser'])
 const CONSENT_BASES = new Set(['explicit_consent', 'legitimate_interest', 'contract', 'legal_obligation', 'vital_interests', 'public_task'])
+const REDACTION_LEVELS = new Set(['none', 'balanced', 'strict'])
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys)
@@ -57,6 +58,11 @@ function validateManifest(m) {
   if (!con || typeof con !== 'object') throw new Error('consent_invalid')
   if (!CONSENT_BASES.has(con.basis)) throw new Error(`consent.basis_invalid:${con.basis}`)
   if (con.consented_at !== undefined && !ISO_Z_RE.test(con.consented_at)) throw new Error('consent.consented_at_invalid')
+
+  // redaction_level
+  if (m.redaction_level !== undefined && !REDACTION_LEVELS.has(m.redaction_level)) {
+    throw new Error(`redaction_level_invalid:${m.redaction_level}`)
+  }
 
   // redactions
   if (m.redactions !== undefined) {

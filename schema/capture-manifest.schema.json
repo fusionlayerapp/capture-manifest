@@ -216,6 +216,11 @@
         }
       }
     },
+    "redaction_level": {
+      "type": "string",
+      "enum": ["none", "balanced", "strict"],
+      "description": "Redaction obligation level applied to the captured content. 'none' = full plaintext, 'balanced' = standard PII removed, 'strict' = extended identifiers removed."
+    },
     "tags": {
       "type": "array",
       "items": {
