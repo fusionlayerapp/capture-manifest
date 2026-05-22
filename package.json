@@ -4,8 +4,9 @@
   "description": "Capture-Manifest — AI capture provenance protocol",
   "type": "commonjs",
   "scripts": {
-    "test": "node --test tools/validate/__tests__/validate.test.js",
-    "validate": "node tools/validate/index.js"
+    "test": "node --test tools/validate/__tests__/validate.test.js tools/create/__tests__/create.test.js",
+    "validate": "node tools/validate/index.js",
+    "create": "node tools/create/index.js"
   },
   "license": "Apache-2.0"
 }
