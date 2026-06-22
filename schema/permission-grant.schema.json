@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/hn2/capture-manifest/spec/v0.1/permission-grant.schema.json",
+  "title": "CaptureMisPermissionsGrant v0.1",
+  "description": "JSON Schema for the Capture-Manifest permission grant object (§10.2) and its revocation record (§10.3).",
+  "type": "object",
+  "required": [
+    "capture_manifest_version",
+    "vendor",
+    "agent_key_id",
+    "granted_at",
+    "allowed_kinds"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "capture_manifest_version": {
+      "type": "string",
+      "const": "0.1",
+      "description": "Must match the Capture-Manifest spec version being implemented."
+    },
+    "vendor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Vendor slug identifying the application that issued the grant (e.g., cursor, claude-code)."
+    },
+    "agent_key_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 of the capture agent's ed25519 public key. Format: sha256:<hex>."
+    },
+    "granted_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+      "description": "ISO 8601 UTC timestamp when the grant was issued."
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+      "description": "ISO 8601 UTC timestamp when the grant expires. Absent means no expiry."
+    },
+    "allowed_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["conversation", "metadata", "agent_actions"]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Permitted capture kinds. At least one value required."
+    },
+    "revocation_endpoint": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "description": "URL to POST for real-time grant revocation."
+    },
+    "grant_signature": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Integrity signature over the grant object (minus this field). Format: sha256:<hex>."
+    },
+    "revoked": {
+      "type": "boolean",
+      "description": "True when this grant has been revoked (§10.3). Absent or false means active."
+    },
+    "revoked_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+      "description": "ISO 8601 UTC timestamp when the grant was revoked. Required when revoked is true."
+    }
+  },
+  "if": {
+    "properties": { "revoked": { "const": true } },
+    "required": ["revoked"]
+  },
+  "then": {
+    "required": ["revoked_at"]
+  }
+}
