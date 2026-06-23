@@ -11,6 +11,7 @@ const SHA256_RE = /^sha256:[0-9a-f]{64}$/
 const SOURCE_KINDS = new Set(['ide', 'chat', 'api', 'mobile', 'cli', 'browser'])
 const CONSENT_BASES = new Set(['explicit_consent', 'legitimate_interest', 'contract', 'legal_obligation', 'vital_interests', 'public_task'])
 const REDACTION_LEVELS = new Set(['none', 'balanced', 'strict'])
+const ALLOWED_KINDS = new Set(['conversation', 'metadata', 'agent_actions'])
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys)
@@ -82,6 +83,40 @@ function validateManifest(m) {
   if (computed !== declared) throw new Error(`manifest_signature_mismatch:expected=${declared}:got=${computed}`)
 }
 
+function validatePermissionGrant(g) {
+  if (!g || typeof g !== 'object' || Array.isArray(g)) throw new Error('grant_not_object')
+
+  const required = ['capture_manifest_version', 'vendor', 'agent_key_id', 'granted_at', 'allowed_kinds']
+  for (const k of required) if (!(k in g)) throw new Error(`missing_required:${k}`)
+
+  if (g.capture_manifest_version !== '0.1') throw new Error('capture_manifest_version_must_be_0.1')
+  if (typeof g.vendor !== 'string' || g.vendor.length < 1) throw new Error('vendor_invalid')
+  if (typeof g.agent_key_id !== 'string' || !SHA256_RE.test(g.agent_key_id)) throw new Error('agent_key_id_invalid')
+  if (typeof g.granted_at !== 'string' || !ISO_Z_RE.test(g.granted_at)) throw new Error('granted_at_invalid')
+
+  if (g.expires_at !== undefined) {
+    if (typeof g.expires_at !== 'string' || !ISO_Z_RE.test(g.expires_at)) throw new Error('expires_at_invalid')
+  }
+
+  if (!Array.isArray(g.allowed_kinds) || g.allowed_kinds.length < 1) throw new Error('allowed_kinds_must_be_non_empty_array')
+  for (let i = 0; i < g.allowed_kinds.length; i++) {
+    if (!ALLOWED_KINDS.has(g.allowed_kinds[i])) throw new Error(`allowed_kinds[${i}]_invalid:${g.allowed_kinds[i]}`)
+  }
+
+  if (g.revocation_endpoint !== undefined) {
+    if (typeof g.revocation_endpoint !== 'string' || g.revocation_endpoint.length < 1) throw new Error('revocation_endpoint_invalid')
+  }
+
+  if (g.grant_signature !== undefined) {
+    if (typeof g.grant_signature !== 'string' || !SHA256_RE.test(g.grant_signature)) throw new Error('grant_signature_invalid')
+  }
+
+  if (g.revoked === true) {
+    if (g.revoked_at === undefined) throw new Error('revoked_at_required_when_revoked')
+    if (typeof g.revoked_at !== 'string' || !ISO_Z_RE.test(g.revoked_at)) throw new Error('revoked_at_invalid')
+  }
+}
+
 function main() {
   const file = process.argv[2]
   if (!file) {
@@ -113,4 +148,4 @@ function main() {
 
 if (require.main === module) main()
 
-module.exports = { canonicalJson, sha256Hex, validateManifest }
+module.exports = { canonicalJson, sha256Hex, validateManifest, validatePermissionGrant }
