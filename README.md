@@ -65,7 +65,7 @@ Exit code 0 = valid. Exit code 1 = validation error or bad file. Exit code 2 = m
 ## Run tests
 
 ```bash
-npm test   # 36 tests (validator + create tool)
+npm test   # 50 tests (manifest validator + permission-grant validator + create tool)
 ```
 
 ## Key concepts
