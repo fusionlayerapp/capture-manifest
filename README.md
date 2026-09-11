@@ -4,6 +4,10 @@
 
 Spun out of [UACP](https://github.com/hn2/uacp) per ADR 0038. Sibling protocols: [AAP](https://github.com/hn2/aap) (operator/action descriptions), [UACP](https://github.com/hn2/uacp) (context payloads).
 
+## Problem
+
+When an AI-generated artifact (a chat transcript, a code diff, a generated document) moves between tools, there is usually no standard record of where it came from, who captured it, when, under what consent basis, and what was redacted before it left the capture point — the exact audit trail GDPR Article 13/14, CCPA §1798.100 and the EU AI Act ask for. Capture-Manifest is a small signed JSON record that travels with (or references) the artifact and answers those questions in a machine-readable, regulator-legible way.
+
 ## Spec
 
 - [`spec/v0.1/CAPTURE-MANIFEST.md`](spec/v0.1/CAPTURE-MANIFEST.md) — normative specification
@@ -61,6 +65,26 @@ try {
 ```
 
 Exit code 0 = valid. Exit code 1 = validation error or bad file. Exit code 2 = missing argument.
+
+## Worked example
+
+[`examples/minimal.json`](examples/minimal.json) is a valid manifest for an artifact captured from a Continue.dev session:
+
+```json
+{
+  "manifest_version": "0.1",
+  "id": "mfst-00000000-0000-0000-0000-000000000001",
+  "artifact_id": "art-00000000-0000-0000-0000-000000000001",
+  "artifact_hash": "sha256:19a5b2e0dc16158a300b803721273460d9970dfabe58c2066a7613070b07a4fc",
+  "source": { "vendor": "continue", "kind": "ide" },
+  "agent": { "name": "fusionlayer-daemon", "version": "1.0.0" },
+  "captured_at": "2026-05-21T10:00:01Z",
+  "consent": { "basis": "explicit_consent" },
+  "manifest_signature": "sha256:b045885e4cb9b3adedc07c42f2db51e63a7a3a50352435801c0ec26893cb6450"
+}
+```
+
+`artifact_hash` binds the manifest to the exact artifact bytes (SHA-256 of its canonical JSON) so the manifest cannot be replayed against a different artifact. `consent.basis` records the legal basis under which the artifact was captured. [`examples/full.json`](examples/full.json) shows the same record with redaction and permission-grant fields populated. Validate either with `npx capture-manifest-validate examples/minimal.json`.
 
 ## Run tests
 
