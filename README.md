@@ -6,7 +6,7 @@ Spun out of [UACP](https://github.com/hn2/uacp) per ADR 0038. Sibling protocols:
 
 ## Problem
 
-When an AI-generated artifact (a chat transcript, a code diff, a generated document) moves between tools, there is usually no standard record of where it came from, who captured it, when, under what consent basis, and what was redacted before it left the capture point — the exact audit trail GDPR Article 13/14, CCPA §1798.100 and the EU AI Act ask for. Capture-Manifest is a small signed JSON record that travels with (or references) the artifact and answers those questions in a machine-readable, regulator-legible way.
+When an AI-generated artifact (a chat transcript, a code diff, a generated document) moves between tools, its provenance and capture context can be lost. Capture-Manifest records the source, capture agent, timestamp, declared consent basis, and redactions in a JSON record that travels with or references the artifact. These fields support auditing; a manifest alone does not establish legal compliance or prove the declared consent.
 
 ## Spec
 
@@ -16,8 +16,8 @@ When an AI-generated artifact (a chat transcript, a code diff, a generated docum
 ## Create a manifest
 
 ```bash
-# one-off (no install)
-npx capture-manifest-create \
+# Run from this repository; these CLI packages are not published.
+node tools/create/index.js \
   --artifact-id art-001 \
   --artifact-hash sha256:<hex> \
   --vendor cursor --kind ide \
@@ -25,15 +25,19 @@ npx capture-manifest-create \
   --consent-basis legitimate_interest \
   --pretty
 
-# or install globally
-npm install -g capture-manifest-create
-capture-manifest-create --artifact-id art-001 --artifact-content "$(cat artifact.json)" \
+# Or hash the artifact content (Git Bash)
+node tools/create/index.js --artifact-id art-001 --artifact-content "$(cat artifact.json)" \
   --vendor cursor --kind ide \
   --agent-name my-daemon --agent-version 1.0.0 \
   --consent-basis legitimate_interest
 
-# programmatic
-const { createManifest } = require('capture-manifest-create')
+```
+
+Programmatic usage from the repository root:
+
+```js
+const fs = require('node:fs')
+const { createManifest } = require('./tools/create/index.js')
 const manifest = createManifest({
   artifact_id: 'art-001',
   artifact: fs.readFileSync('artifact.json', 'utf8'),  // or pre-computed hash: 'sha256:<hex>'
@@ -47,15 +51,14 @@ fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2))
 ## Validate a manifest
 
 ```bash
-# one-off (no install)
-npx capture-manifest-validate path/to/manifest.json
+node tools/validate/index.js path/to/manifest.json
+```
 
-# or install globally
-npm install -g capture-manifest-validate
-capture-manifest-validate my-manifest.json
+Programmatic validation from the repository root (throws on invalid):
 
-# programmatic (throws on invalid)
-const { validateManifest } = require('capture-manifest-validate')
+```js
+const fs = require('node:fs')
+const { validateManifest } = require('./tools/validate/index.js')
 try {
   validateManifest(JSON.parse(fs.readFileSync('manifest.json', 'utf8')))
   console.log('valid')
@@ -84,7 +87,7 @@ Exit code 0 = valid. Exit code 1 = validation error or bad file. Exit code 2 = m
 }
 ```
 
-`artifact_hash` binds the manifest to the exact artifact bytes (SHA-256 of its canonical JSON) so the manifest cannot be replayed against a different artifact. `consent.basis` records the legal basis under which the artifact was captured. [`examples/full.json`](examples/full.json) shows the same record with redaction and permission-grant fields populated. Validate either with `npx capture-manifest-validate examples/minimal.json`.
+`artifact_hash` identifies the artifact by a SHA-256 digest. The consuming application must recompute and compare that digest; the manifest validator does not read or verify the referenced artifact. `consent.basis` records the declared basis for capture. [`examples/full.json`](examples/full.json) shows redaction and permission-grant fields. Validate either with `node tools/validate/index.js examples/minimal.json`.
 
 ## Run tests
 
