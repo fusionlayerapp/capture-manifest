@@ -1,0 +1,15 @@
+{
+  "name": "capture-manifest",
+  "version": "0.1.0",
+  "description": "Capture-Manifest — AI Capture Provenance Specification, Schema & Conformance Validator",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tools/validate/__tests__/validate.test.js tools/validate/__tests__/permission-grant.test.js",
+    "validate": "node tools/validate/index.js"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fusionlayerapp/capture-manifest.git"
+  }
+}

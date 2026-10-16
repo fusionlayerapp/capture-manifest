@@ -1,0 +1,33 @@
+{
+  "name": "capture-manifest-validate",
+  "version": "0.1.0",
+  "description": "Validator for Capture-Manifest (AI capture provenance protocol)",
+  "bin": {
+    "capture-manifest-validate": "./index.js"
+  },
+  "main": "./index.js",
+  "files": [
+    "index.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "capture-manifest",
+    "uacp",
+    "ai",
+    "provenance",
+    "consent",
+    "gdpr"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/hn2/capture-manifest",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hn2/capture-manifest.git",
+    "directory": "tools/validate"
+  },
+  "bugs": {
+    "url": "https://github.com/hn2/capture-manifest/issues"
+  }
+}
