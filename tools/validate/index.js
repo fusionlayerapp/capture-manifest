@@ -4,6 +4,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
+const { CAPTURE_ERROR_CATALOG, lookupCaptureError } = require('./errors.js')
 
 const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
 const ISO_Z_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/
@@ -117,35 +118,192 @@ function validatePermissionGrant(g) {
   }
 }
 
-function main() {
-  const file = process.argv[2]
+function inspectCaptureManifest(m) {
+  const clone = JSON.parse(JSON.stringify(m || {}))
+  delete clone.manifest_signature
+  const computed = sha256Hex(canonicalJson(clone))
+  let valid = false
+  let error = null
+  try {
+    validateManifest(m)
+    valid = true
+  } catch (err) {
+    error = err.message
+  }
+  return {
+    protocol: 'CaptureManifest/0.1',
+    valid,
+    id: m?.id || null,
+    artifact_id: m?.artifact_id || null,
+    vendor: m?.source?.vendor || null,
+    consentBasis: m?.consent?.basis || null,
+    redaction_level: m?.redaction_level || 'none',
+    declaredSignature: m?.manifest_signature || null,
+    computedSignature: `sha256:${computed}`,
+    error,
+    catalogEntry: error ? lookupCaptureError(error) : null,
+  }
+}
+
+function runCaptureDoctor() {
+  const sample = {
+    manifest_version: '0.1',
+    id: 'cap-doc-1',
+    artifact_id: 'art-1',
+    artifact_hash: `sha256:${'a'.repeat(64)}`,
+    source: { vendor: 'anthropic', kind: 'cli' },
+    agent: { name: 'claude-code', version: '1.0.0' },
+    captured_at: '2026-10-23T00:00:00Z',
+    consent: { basis: 'explicit_consent', consented_at: '2026-10-23T00:00:00Z' },
+  }
+  sample.manifest_signature = `sha256:${sha256Hex(canonicalJson(sample))}`
+  let ok = false
+  try {
+    validateManifest(sample)
+    ok = true
+  } catch {}
+  const checks = [
+    { name: 'canonical_manifest_signing', status: ok ? 'ok' : 'error', detail: 'Canonical JSON + SHA-256 signature verified' },
+    { name: 'error_catalog', status: Object.keys(CAPTURE_ERROR_CATALOG).length >= 4 ? 'ok' : 'error', detail: `${Object.keys(CAPTURE_ERROR_CATALOG).length} structured error codes registered` },
+  ]
+  return { healthy: checks.every((c) => c.status === 'ok'), protocol: 'CaptureManifest/0.1', checks }
+}
+
+function writeCaptureOutputFile(filePath, payload, textOutput, { append = false } = {}) {
+  if (!filePath) return null
+  const abs = path.resolve(process.cwd(), filePath)
+  fs.mkdirSync(path.dirname(abs), { recursive: true })
+  const lower = abs.toLowerCase()
+  const nl = '\n'
+  if (append || lower.endsWith('.jsonl') || lower.endsWith('.ndjson')) {
+    const line = JSON.stringify(payload !== undefined ? payload : { output: textOutput }) + nl
+    if (append) fs.appendFileSync(abs, line, 'utf8')
+    else fs.writeFileSync(abs, line, 'utf8')
+    return abs
+  }
+  const content =
+    lower.endsWith('.json') && payload !== undefined
+      ? JSON.stringify(payload, null, 2) + nl
+      : String(textOutput) + (String(textOutput).endsWith(nl) ? '' : nl)
+  fs.writeFileSync(abs, content, 'utf8')
+  return abs
+}
+
+function extractOption(argv, flags) {
+  let value = null
+  const rest = []
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i]
+    const eqFlag = flags.find((f) => token.startsWith(`${f}=`))
+    if (eqFlag) {
+      value = token.slice(eqFlag.length + 1)
+      continue
+    }
+    if (flags.includes(token)) {
+      if (i + 1 < argv.length) {
+        value = argv[i + 1]
+        i += 1
+      }
+      continue
+    }
+    rest.push(token)
+  }
+  return { value, rest }
+}
+
+function runCaptureCli(argv = process.argv.slice(2)) {
+  const jsonFlag = argv.includes('--json')
+  const appendFlag = argv.includes('--append')
+  const stripped = argv.filter((a) => a !== '--json' && a !== '--append')
+  const { value: outFile, rest: args } = extractOption(stripped, ['-o', '--out', '--output', '--log-file'])
+  const outputPath = outFile || process.env.CAPTURE_DIAG_OUTPUT_FILE || null
+  const finalize = (exitCode, output, payload) => {
+    const written = writeCaptureOutputFile(outputPath, payload, output, { append: appendFlag })
+    return { exitCode, output, outputFile: written, payload }
+  }
+
+  const cmd = args[0]
+
+  if (cmd === 'doctor' || cmd === 'conformance') {
+    const doc = runCaptureDoctor()
+    const output = jsonFlag ? JSON.stringify(doc, null, 2) : `Capture-Manifest Doctor: ${doc.healthy ? 'HEALTHY' : 'UNHEALTHY'}`
+    return finalize(doc.healthy ? 0 : 1, output, doc)
+  }
+
+  if (cmd === 'errors') {
+    const code = args[1]
+    if (code) {
+      const entry = lookupCaptureError(code)
+      if (!entry) {
+        const payload = { error: `Unknown code: ${code}` }
+        return finalize(1, payload.error, payload)
+      }
+      return finalize(0, JSON.stringify(entry, null, 2), entry)
+    }
+    const all = Object.values(CAPTURE_ERROR_CATALOG)
+    return finalize(0, JSON.stringify(all, null, 2), all)
+  }
+
+  if (cmd === 'inspect') {
+    const file = args[1]
+    if (!file) {
+      return finalize(2, 'Usage: node tools/validate/index.js inspect <path-to-manifest.json> [-o|--output <file>]', {
+        error: 'missing_file',
+      })
+    }
+    const abs = path.resolve(process.cwd(), file)
+    const manifest = JSON.parse(fs.readFileSync(abs, 'utf8'))
+    const info = inspectCaptureManifest(manifest)
+    return finalize(info.valid ? 0 : 1, JSON.stringify(info, null, 2), info)
+  }
+
+  const file = cmd === 'validate' ? args[1] : cmd
   if (!file) {
-    console.error('Usage: node tools/validate/index.js <path-to-manifest.json>')
-    process.exit(2)
+    return finalize(
+      2,
+      'Usage: node tools/validate/index.js <path-to-manifest.json|doctor|inspect|errors> [--json] [-o|--output <file>]',
+      { error: 'missing_command' },
+    )
   }
 
   const abs = path.resolve(process.cwd(), file)
   let raw
   try { raw = fs.readFileSync(abs, 'utf8') } catch (e) {
-    console.error(`FAIL: cannot read ${file}: ${e.message}`)
-    process.exit(1)
+    return finalize(1, `FAIL: cannot read ${file}: ${e.message}`, { ok: false, file, error: e.message })
   }
 
   let manifest
   try { manifest = JSON.parse(raw) } catch (e) {
-    console.error(`FAIL: ${file}: invalid JSON: ${e.message}`)
-    process.exit(1)
+    return finalize(1, `FAIL: ${file}: invalid JSON: ${e.message}`, { ok: false, file, error: e.message })
   }
 
   try {
     validateManifest(manifest)
-    console.log(`PASS: ${file}`)
+    const payload = { ok: true, file }
+    return finalize(0, jsonFlag ? JSON.stringify(payload, null, 2) : `PASS: ${file}`, payload)
   } catch (err) {
-    console.error(`FAIL: ${file}: ${err.message}`)
-    process.exit(1)
+    const payload = { ok: false, file, error: err.message }
+    return finalize(1, jsonFlag ? JSON.stringify(payload, null, 2) : `FAIL: ${file}: ${err.message}`, payload)
   }
+}
+
+function main() {
+  const { exitCode, output } = runCaptureCli(process.argv.slice(2))
+  if (exitCode === 0) console.log(output)
+  else console.error(output)
+  process.exit(exitCode)
 }
 
 if (require.main === module) main()
 
-module.exports = { canonicalJson, sha256Hex, validateManifest, validatePermissionGrant }
+module.exports = {
+  canonicalJson,
+  sha256Hex,
+  validateManifest,
+  validatePermissionGrant,
+  inspectCaptureManifest,
+  runCaptureDoctor,
+  runCaptureCli,
+  CAPTURE_ERROR_CATALOG,
+  lookupCaptureError,
+}
