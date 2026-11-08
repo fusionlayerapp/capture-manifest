@@ -20,4 +20,4 @@ Capture-Manifest is stewarded by the FusionLayer core team (GitHub: [fusionlayer
 
 ## 4. Security
 
-Security or privacy vulnerabilities in Capture-Manifest schemas or tooling (`tools/validate`, `tools/create`) should be reported privately per [`SECURITY.md`](SECURITY.md).
+Security or privacy vulnerabilities in Capture-Manifest schemas or tooling (`tools/validate`) should be reported privately per [`SECURITY.md`](SECURITY.md).

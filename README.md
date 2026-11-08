@@ -13,39 +13,13 @@ When an AI-generated artifact (a chat transcript, a code diff, a generated docum
 - [`spec/v0.1/CAPTURE-MANIFEST.md`](spec/v0.1/CAPTURE-MANIFEST.md) — normative specification
 - [`schema/capture-manifest.schema.json`](schema/capture-manifest.schema.json) — JSON Schema
 
-## Create a manifest
+## Create and check a manifest
+
+Start from [`examples/minimal.json`](examples/minimal.json) (required fields only) or [`examples/full.json`](examples/full.json), fill in your artifact hash and source details following the schema, then check the result:
 
 ```bash
-# Run from this repository; these CLI packages are not published.
-node tools/create/index.js \
-  --artifact-id art-001 \
-  --artifact-hash sha256:<hex> \
-  --vendor cursor --kind ide \
-  --agent-name my-daemon --agent-version 1.0.0 \
-  --consent-basis legitimate_interest \
-  --pretty
-
-# Or hash the artifact content (Git Bash)
-node tools/create/index.js --artifact-id art-001 --artifact-content "$(cat artifact.json)" \
-  --vendor cursor --kind ide \
-  --agent-name my-daemon --agent-version 1.0.0 \
-  --consent-basis legitimate_interest
-
-```
-
-Programmatic usage from the repository root:
-
-```js
-const fs = require('node:fs')
-const { createManifest } = require('./tools/create/index.js')
-const manifest = createManifest({
-  artifact_id: 'art-001',
-  artifact: fs.readFileSync('artifact.json', 'utf8'),  // or pre-computed hash: 'sha256:<hex>'
-  source: { vendor: 'cursor', kind: 'ide' },
-  agent: { name: 'my-daemon', version: '1.0.0' },
-  consent: { basis: 'legitimate_interest' },
-})
-fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2))
+# Run from this repository; the validator is not published as an npm package.
+node tools/validate/index.js manifest.json
 ```
 
 ## Validate a manifest
